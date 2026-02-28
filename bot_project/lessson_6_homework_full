@@ -1,0 +1,193 @@
+import asyncio
+import logging
+import sys
+from datetime import datetime
+
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import Message, InlineKeyboardButton, BotCommand, BotCommandScopeAllPrivateChats, CallbackQuery, InputMediaPhoto
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+TOKEN = "Token"
+redis_url = 'redis://localhost:6379/0'
+
+dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
+ADMIN_ID = ID
+
+
+
+class Form(StatesGroup):
+    first_name = State()
+    birth_date = State()
+    image = State()
+    edit_name = State()
+    edit_birth = State()
+    edit_image = State()
+
+
+async def startup(bot: Bot):
+    await bot.set_my_commands([
+        BotCommand(command='start', description="Bot started"),
+    ], scope=BotCommandScopeAllPrivateChats())
+
+
+@dp.message(CommandStart())
+async def start_handler(message: Message, state: FSMContext):
+    await state.set_state(Form.first_name)
+    await message.answer("Bot ga xush kelibsiz!\nIsm kiriting:")
+
+
+@dp.message(Form.first_name)
+async def handle_first_name(message: Message, state: FSMContext):
+    first_name = message.text
+    if first_name.replace("'", '').isalpha():
+        await state.update_data(first_name=first_name.title())
+        await state.set_state(Form.birth_date)
+        await message.answer("Tug'ilgan kun kiriting (YYYY.MM.DD)")
+    else:
+        await message.answer("Ism to'g'ri kiriting ❌")
+
+
+@dp.message(Form.birth_date)
+async def handle_birth_date(message: Message, state: FSMContext):
+    try:
+        birth_date = datetime.strptime(message.text, '%Y.%m.%d')
+    except:
+        await message.answer("Tug'ilgan sanani to'g'ri kiriting ❌")
+        return
+
+    age = datetime.now().year - birth_date.year
+    await state.update_data(birth_date=message.text, age=age)
+    await state.set_state(Form.image)
+    await message.answer("Rasm yuboring:")
+
+
+@dp.message(Form.image)
+async def handle_image(message: Message, state: FSMContext):
+    if not message.photo:
+        await message.answer("Rasm xato ❌ (Rasm formatda yuboring)")
+        return
+
+    await state.update_data(photo=message.photo[-1].file_id)
+    data = await state.get_data()
+
+    text = (
+        f"<b>Ism</b>: {data['first_name']}\n"
+        f"<b>Tug'ilgan kun</b>: {data['birth_date']}\n"
+        f"<b>Yoshi</b>: {data['age']}\n"
+        f"<b>Telegram ID</b>: {message.from_user.id}"
+    )
+
+    ikm = InlineKeyboardBuilder()
+    ikm.add(
+        InlineKeyboardButton(text='Ism ✏️', callback_data='ism'),
+        InlineKeyboardButton(text="Tug'ilgan kun ✏️", callback_data='birth'),
+        InlineKeyboardButton(text='Rasm ✏️', callback_data='image')
+    )
+    ikm.adjust(1)
+
+    sent = await message.answer_photo(
+        photo=data['photo'],
+        caption=text,
+        reply_markup=ikm.as_markup(),
+        parse_mode=ParseMode.HTML
+    )
+
+    await state.update_data(profile_message_id=sent.message_id)
+
+
+@dp.callback_query()
+async def callback_handler(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+
+    if callback.data == "ism":
+        await state.set_state(Form.edit_name)
+        await callback.message.answer(f"Eski ism: {data.get('first_name', 'yo‘q')}\nYangi ism kiriting:")
+
+    elif callback.data == "birth":
+        await state.set_state(Form.edit_birth)
+        await callback.message.answer(f"Eski tug‘ilgan kun: {data.get('birth_date', 'yo‘q')}\nYangi sana kiriting (YYYY.MM.DD):")
+
+    elif callback.data == "image":
+        await state.set_state(Form.edit_image)
+        await callback.message.answer("Yangi rasm yuboring:")
+
+    await callback.answer()
+
+
+
+async def send_updated_profile(message: Message, state: FSMContext):
+    """Foydalanuvchiga yangilangan profilni yangi xabar sifatida yuboradi"""
+    data = await state.get_data()
+    text = (
+        f"<b>Ism</b>: {data['first_name']}\n"
+        f"<b>Tug'ilgan kun</b>: {data['birth_date']}\n"
+        f"<b>Yoshi</b>: {data['age']}\n"
+        f"<b>Telegram ID</b>: {message.from_user.id}"
+    )
+    ikm = InlineKeyboardBuilder()
+    ikm.add(
+        InlineKeyboardButton(text='Ism ✏️', callback_data='ism'),
+        InlineKeyboardButton(text="Tug'ilgan kun ✏️", callback_data='birth'),
+        InlineKeyboardButton(text='Rasm ✏️', callback_data='image')
+    )
+    ikm.adjust(1)
+
+    await message.answer_photo(
+        photo=data['photo'],
+        caption=text,
+        reply_markup=ikm.as_markup(),
+        parse_mode=ParseMode.HTML
+    )
+
+
+@dp.message(Form.edit_name)
+async def edit_name(message: Message, state: FSMContext):
+    if not message.text.replace("'", '').isalpha():
+        await message.answer("Ism noto‘g‘ri ❌")
+        return
+
+    await state.update_data(first_name=message.text.title())
+    await send_updated_profile(message, state)
+    await state.set_state(None)
+
+
+@dp.message(Form.edit_birth)
+async def edit_birth(message: Message, state: FSMContext):
+    try:
+        birth_date = datetime.strptime(message.text, "%Y.%m.%d")
+    except:
+        await message.answer("Sana noto‘g‘ri ❌")
+        return
+
+    age = datetime.now().year - birth_date.year
+    await state.update_data(birth_date=message.text, age=age)
+    await send_updated_profile(message, state)
+    await state.set_state(None)
+
+
+@dp.message(Form.edit_image)
+async def edit_image(message: Message, state: FSMContext):
+    if not message.photo:
+        await message.answer("Rasm yuboring ❌")
+        return
+
+    await state.update_data(photo=message.photo[-1].file_id)
+    await send_updated_profile(message, state)
+    await state.set_state(None)
+
+
+async def main():
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dp.startup.register(startup)
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())

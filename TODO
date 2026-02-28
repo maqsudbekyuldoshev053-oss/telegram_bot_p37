@@ -1,0 +1,14 @@
+7874681745:AAFb_km4wx4lHNfD-MAYK9OmabOhLdB0ORs
+
+
+
+https://api.telegram.org/bot7874681745:AAFb_km4wx4lHNfD-MAYK9OmabOhLdB0ORs/getMe
+
+"chat_id":7874681745
+"text":xabar
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
+

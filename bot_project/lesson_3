@@ -1,0 +1,204 @@
+-------------------------------------------------------------------------
+1-kutubxonalar
+
+import asyncio
+import logging
+import sys
+from os import getenv
+from pyexpat.errors import messages
+from aiogram import Bot, Dispatcher, html
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import CommandStart
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import Message, FSInputFile, ContentType, InputPollOption, URLInputFile, ReplyKeyboardMarkup, \
+    KeyboardButton, InlineKeyboardButton, CallbackQuery,InlineKeyboardMarkup
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+2-botning Tokeni
+
+TOKEN = Token
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+3- adminning id isi
+
+ADMIN_ID = 7742819222
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+dp = Dispatcher()
+
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+4- start bosilganda  "Xush kelibsiz!"  chiqaradi
+
+@dp.message(CommandStart())
+async def command_start(message: Message, bot: Bot, state: FSMContext) -> None:
+    text = "Xush kelibsiz!"
+    await message.answer(text)
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+5-  buttonlar ni chiqaradi
+oddiy usuli bunda
+#     rkm = ReplyKeyboardBuilder()            -----------bu button yaratishda kerakli kutubxona va kerakli kod
+#     rkm.row(                                -----------bu rkm uzgaruvchi nomi  row esa buyruq row ichiga nechta button yozilsa botda bir qatorda shuncha button buladi
+#     KeyboardButton(text='CE'),              -----------bu bir button nomini yozilishi
+#     KeyboardButton(text='/', style='danger')-----------bu yerda style da rang beriladi (danger-> qizil, succes -> yashil, primary -> ko'k)
+
+
+# @dp.message(CommandStart())
+# async def command_start_handler(message: Message, bot : Bot) -> None:
+#     rkm = ReplyKeyboardBuilder()
+#     rkm.row(
+#         KeyboardButton(text='CE'),
+#         KeyboardButton(text='/', style='danger'),
+#         KeyboardButton(text='x',style='danger'),
+#         KeyboardButton(text='?', style='success'),
+#     )
+#     rkm.row(
+#         KeyboardButton(text='7'),
+#         KeyboardButton(text='8'),
+#         KeyboardButton(text='9'),
+#         KeyboardButton(text='C',style='danger')
+#     )
+#     rkm.row(
+#         KeyboardButton(text='4'),
+#         KeyboardButton(text='5'),
+#         KeyboardButton(text='6'),
+#         KeyboardButton(text='-',style='danger')
+#     )
+#     rkm.row(
+#         KeyboardButton(text='3'),
+#         KeyboardButton(text='2'),
+#         KeyboardButton(text='1'),
+#         KeyboardButton(text='+',style='danger')
+#     )
+#     rkm.row(
+#         KeyboardButton(text='0'),
+#         KeyboardButton(text='.', style='primary'),
+#         KeyboardButton(text='=',style='primary'),
+#     )
+#     await message.answer('Bu menyular', reply_markup=rkm.as_markup(resize_keyboard=True, one_time_keyboard=True))
+resize_keyboard=True----------buttonlar  ekranga moslashib kichrayadi
+one_time_keyboard=True -------foydalanuvchi bir marta tugmani bosgandan keyin avtomatik yopiladi (yashirinadi).
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+5-  buttonlar ni chiqaradi
+oddiy usuli bunda
+klaviatura chiqadigan joydan buttonlar chiqadi
+
+#     ikn = ReplyKeyboardBuilder()            -----------bu button yaratishda kerakli kutubxona va kerakli kod
+#     ikn.add(                                -----------bu ikn uzgaruvchi nomi  add esa buyruq  barcha buttonlarni bitta add ga yozish mumkin bu row ga qaraganda tez
+                                                         lekin buttnlarni tahlash uchun  (ikn.adjust(4)) yozish kk
+#     ikn.adjust(4)                           -----------bu ikn uzgaruvchi nomi adjust(4) esa buyruq  buttonlarni bir qatorda nechta chiqishini taminlaydi
+                                                          ichiga nechi raqamini yozsa shuncha button chiqadi
+#     KeyboardButton(text='CE'),              -----------bu bir button nomini yozilishi
+#     KeyboardButton(text='/', style='danger')-----------bu yerda style da rang beriladi (danger-> qizil, succes -> yashil, primary -> ko'k)
+
+
+@dp.message(lambda msg: msg.content_type == ContentType.CONTACT)
+async def contact_handler(message: Message, bot : Bot) -> None:
+    print(message.contact)
+
+@dp.message(CommandStart())
+async def command_start_handler(message: Message, bot: Bot) -> None:
+    await message.answer("start bosildi", reply_markup=ReplyKeyboardRemove())
+    ikn = ReplyKeyboardBuilder()
+    ikn.add(
+        KeyboardButton(text='CE'),
+        KeyboardButton(text='/', style='danger'),
+        KeyboardButton(text='x',style='danger'),
+        KeyboardButton(text='?', style='primary'),
+        KeyboardButton(text='7'),
+        KeyboardButton(text='8'),
+        KeyboardButton(text='9'),
+        KeyboardButton(text='C',style='primary'),
+        KeyboardButton(text='4'),
+        KeyboardButton(text='5'),
+        KeyboardButton(text='6'),
+        KeyboardButton(text='-',style='danger'),
+        KeyboardButton(text='3'),
+        KeyboardButton(text='2'),
+        KeyboardButton(text='1'),
+        KeyboardButton(text='+',style='danger'),
+        KeyboardButton(text='0'),
+        KeyboardButton(text='.', style='primary'),
+        KeyboardButton(text='=',style='primary'),
+    )
+    ikn.row(
+        KeyboardButton(text='Nomer', style='danger', request_contact=True),
+        KeyboardButton(text='Location', style='success', request_location=True),
+        KeyboardButton(text='Poll', style='primary', request_poll=KeyboardButtonPollType()),
+    )
+
+    ikn.adjust(4)
+    await message.answer('menyu',reply_markup=ikn.as_markup(reply_markup=ikn.as_markup(resize_keyboard=True, one_time_keyboard=True)))
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+
+bu cod botdagi buttonlarni uchiriadi
+
+
+# @dp.message(CommandStart())
+# async def command_start_handler(message: Message, bot : Bot) -> None:
+#     await message.answer(
+#         "Klaviatura o‘chirildi ",
+#         reply_markup=ReplyKeyboardRemove()
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+5-  buttonlar ni chiqaradi
+oddiy usuli bunda
+klaviatura chiqadigan joydan buttonlar chiqadi
+va bu eng osson usuli
+
+# @dp.message(CommandStart())
+# async def command_start_handler(message: Message, bot : Bot) -> None:
+#     await message.answer("start bosildi", reply_markup=ReplyKeyboardRemove())----bu start bosilgan da
+-----------------------------------------------button lar kurinmaydi va biron nima bosilsa keyin chiqadi
+
+#     buttons = [
+#         ['CE', '/', '*', '?'],
+#         ['7', '8', '9', 'C'],
+#         ['4', '5', '6', '-'],
+#         ['1', '2', '3', '+'],
+#         ['0', '.', '=']
+#     ]
+#
+#     rkm = ReplyKeyboardBuilder([[KeyboardButton(text=i)for i in button]for button in buttons])
+#
+#     await message.answer("Kalkulyator:",reply_markup=rkm.as_markup( resize_keyboard=True))
+
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+6- bu botni run qilishda kerakli cod
+
+async def main() -> None:
+    # Initialize Bot instance with default bot properties which will be passed to all API calls
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    # And the run events dispatching
+    await dp.start_polling(bot)
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+7- bu ishga tushiradigan cod
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())

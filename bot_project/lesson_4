@@ -1,0 +1,153 @@
+-------------------------------------------------------------------------
+1-kutubxonalar
+
+import asyncio
+import logging
+import sys
+from os import getenv
+from pyexpat.errors import messages
+from aiogram import Bot, Dispatcher, html
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import CommandStart
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import Message, FSInputFile, ContentType, InputPollOption, URLInputFile, ReplyKeyboardMarkup, \
+    KeyboardButton, InlineKeyboardButton, CallbackQuery,InlineKeyboardMarkup
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+2-botning Tokeni
+
+TOKEN = 'Token'
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+3- adminning id isi
+
+ADMIN_ID = ID
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+dp = Dispatcher()
+
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+4- start bosilganda  "Xush kelibsiz!"  chiqaradi
+
+@dp.message(CommandStart())
+async def command_start(message: Message, bot: Bot, state: FSMContext) -> None:
+    text = "Xush kelibsiz!"
+    await message.answer(text)
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+5-  buttonlar ni chiqaradi
+oddiy usuli emas bunda
+klaviatura chiqadigan joydan buttonlar chiqmaydi
+bunda ekrandan matnlar chiqadigan joydan buttonlar chiqadi
+
+#     ikn = InlineKeyboardBuilder()                      -----------bu button yaratishda kerakli kutubxona va kerakli kod
+#     ikn.add(                                           -----------bu ikn uzgaruvchi nomi  add esa buyruq  barcha buttonlarni bitta add ga yozish mumkin bu row ga qaraganda tez
+                                                                    lekin buttnlarni tahlash uchun  (ikn.adjust(4)) yozish kk
+#     ikn.adjust(4)                                      -----------bu ikn uzgaruvchi nomi adjust(4) esa buyruq  buttonlarni bir qatorda nechta chiqishini taminlaydi
+                                                                     ichiga nechi raqamini yozsa shuncha button chiqadi
+#     InlineKeyboardButton(text='CE'),                   -----------bu bir button nomini yozilishi
+#     InlineKeyboardButton(text='/', style='danger')     -----------bu yerda style da rang beriladi (danger-> qizil, succes -> yashil, primary -> ko'k)
+#     InlineKeyboardButton(text='CE', callback_data='ce')-----------bu
+
+
+
+# @dp.message(CommandStart())
+# async def command_start_handler(message: Message) -> None:
+#
+#     ikn = InlineKeyboardBuilder()
+#     ikn.add(
+#         InlineKeyboardButton(text='CE', callback_data='ce'),
+#         InlineKeyboardButton(text='/', style='danger', callback_data='/'),
+#         InlineKeyboardButton(text='x',style='danger', callback_data='x'),
+#         InlineKeyboardButton(text='?', style='primary', callback_data='?'),
+#         InlineKeyboardButton(text='7', callback_data='7'),
+#         InlineKeyboardButton(text='8', callback_data='8'),
+#         InlineKeyboardButton(text='9', callback_data='9'),
+#         InlineKeyboardButton(text='C',style='primary', callback_data='C'),
+#         InlineKeyboardButton(text='4', callback_data='4'),
+#         InlineKeyboardButton(text='5', callback_data='5'),
+#         InlineKeyboardButton(text='6', callback_data='6'),
+#         InlineKeyboardButton(text='-',style='danger', callback_data='-'),
+#         InlineKeyboardButton(text='3', callback_data='3'),
+#         InlineKeyboardButton(text='2', callback_data='2'),
+#         InlineKeyboardButton(text='1', callback_data='1'),
+#         InlineKeyboardButton(text='+',style='danger', callback_data='+'),
+#         InlineKeyboardButton(text='0', callback_data='0'),
+#         InlineKeyboardButton(text='.', style='primary', callback_data='.'),
+#         InlineKeyboardButton(text='=',style='primary', callback_data='='),
+#     )
+#     ikn.adjust(4)
+#     await message.answer('menyu',reply_markup=ikn.as_markup())
+
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+5-  buttonlar ni chiqaradi
+oddiy usuli emas bunda
+klaviatura chiqadigan joydan buttonlar chiqmaydi
+bunda ekrandan matnlar chiqadigan joydan buttonlar chiqadi
+(bu soddaroq usuli yuqoridagi bilan bir xil ishlaydi)
+
+
+@dp.message(CommandStart())
+async def command_start_handler(message: Message) -> None:
+
+    button = [
+        ['CE', '/', '*', '?'],
+        ['7', '8', '9', 'C'],
+        ['4', '5', '6', '-'],
+        ['1', '2', '3', '+'],
+        ['0', '.', '=']
+    ]
+
+    ikm = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=item, callback_data=item) for item in row]
+            for row in button
+        ]
+    )
+    await message.answer("Kalkulyator:", reply_markup=ikm)
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+7- bu query berilgan callback lar ni chiqaradi yani har bir button nima ish qilishini yozish mumkin
+ lekin bu yerda hamma button uchun bitta buyruq berilgan
+
+# @dp.callback_query()
+# async def callback_start_handler(callback: CallbackQuery) -> None:
+#     await callback.answer(f"{callback.data} it's calculate button")
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+8- bu botni run qilishda kerakli cod
+
+async def main() -> None:
+    # Initialize Bot instance with default bot properties which will be passed to all API calls
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    # And the run events dispatching
+    await dp.start_polling(bot)
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+9- bu ishga tushiradigan cod
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())

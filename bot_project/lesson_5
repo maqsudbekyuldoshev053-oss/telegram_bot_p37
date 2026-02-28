@@ -1,0 +1,101 @@
+import asyncio
+import logging
+import sys
+from os import getenv
+from pyexpat.errors import messages
+from aiogram import Bot, Dispatcher, html
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import CommandStart, Command
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import Message, FSInputFile, ContentType, InputPollOption, URLInputFile, CallbackQuery, \
+    InlineKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton, KeyboardButtonPollType, InlineKeyboardButton, BotCommand, \
+    BotCommandScope, BotCommandScopeAllChatAdministrators, BotCommandScopeAllPrivateChats
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
+from sqlalchemy.orm import scoped_session
+
+# Bot token can be obtained via https://t.me/BotFather
+TOKEN = "Token"
+ADMIN_ID = ID
+
+# All handlers should be attached to the Router (or Dispatcher)
+dp = Dispatcher()
+
+
+
+@dp.message(CommandStart())
+async def command_start_handler(message: Message, bot : Bot) -> None:
+    rkm = ReplyKeyboardBuilder()
+    rkm.row(
+        KeyboardButton(text='CE'),
+        KeyboardButton(text='/', style='danger'),
+        KeyboardButton(text='x',style='danger'),
+        KeyboardButton(text='?', style='success'),
+    )
+    rkm.adjust(2)
+    await message.answer('Bu menyular', reply_markup=rkm.as_markup(resize_keyboard=True))
+
+
+
+async def startup(bot: Bot) -> None:
+    await bot.send_message(ADMIN_ID, "bot started!")
+#     await bot.set_my_name("Practice bot")
+#     await bot.set_my_commands([
+#         BotCommand(command='del', description="delete message"),
+#         BotCommand(command='edit', description="update message"),
+#     ], scope=BotCommandScopeAllPrivateChats())
+#
+#
+# @dp.message(Command('del'))
+# async def command_del_message_handler(message: Message, bot:Bot):
+#     await bot.delete_messages(message.chat.id, list(range(message.message_id, 0,-1))[:20])
+#     ikm = InlineKeyboardBuilder()
+#     ikm.add(InlineKeyboardButton(text='dalete', callback_data='dalete'))
+#     await message.answer("Barcha habarlar o'chirildi!!!", reply_markup=ikm.as_markup())
+# #
+# @dp.message(Command('edit'))
+# async def command_del_message_handler(message: Message, bot:Bot):
+#     ikm= InlineKeyboardBuilder()
+#     ikm.add(InlineKeyboardButton(text='update', callback_data='update'))
+#
+#     await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id, reply_markup=ikm.as_markup())
+# #
+#
+# @dp.message(CommandStart())
+# async def common_start_handler(message: Message, bot: Bot) -> None:
+#
+#     ikn = InlineKeyboardBuilder()
+#     ikn.add(
+#         InlineKeyboardButton(text='b1', callback_data='b1'),
+#         InlineKeyboardButton(text='b2', callback_data='b2'),
+#         InlineKeyboardButton(text='❌', callback_data='remove'),
+#     )
+#     await message.answer('menyular',  reply_markup=ikn.as_markup())
+#
+#
+# @dp.callback_query()
+# async def common_start_handler(callback: CallbackQuery) -> None:
+#     if callback.data == 'remove':
+#         await callback.message.delete_reply_markup(callback.inline_message_id)
+#     else:
+#         await callback.answer(f"{callback.data} bu buyruq")
+
+
+async def shutdown(bot: Bot) -> None:
+    await bot.send_message(ADMIN_ID, "bot stopped!")
+
+
+async def main() -> None:
+    # Initialize Bot instance with default bot properties which will be passed to all API calls
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dp.startup.register(startup)
+    dp.shutdown.register(shutdown)
+
+    # And the run events dispatching
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())

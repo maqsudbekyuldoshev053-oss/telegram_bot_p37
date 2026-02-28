@@ -1,0 +1,102 @@
+import asyncio
+import logging
+import sys
+
+from datetime import datetime
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart, Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import Message, ReplyKeyboardRemove
+
+
+
+TOKEN = "Token"
+
+redis_url = 'redis://localhost:6379/0'
+dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
+
+ADMIN_ID = ID
+
+
+class Form(StatesGroup):
+    first_name = State()
+    birth_date = State()
+    image = State()
+
+
+@dp.message(Command('start'))
+async def command_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(Form.first_name)
+    await message.answer('Xush kelibsiz!')
+    await message.answer('Ismingizni kiriting: ')
+
+
+@dp.message(Form.first_name)
+async def command_start(message: Message, state: FSMContext) -> None:
+    await state.update_data(first_name=message.text)
+    await state.set_state(Form.birth_date)
+    await message.answer("Tug'ilgan kunizni kiriting YYYY.MM.DD(kamida 18 yosh bulsin): ")
+
+
+@dp.message(Form.birth_date)
+async def command_start(message: Message, state: FSMContext) -> None:
+        try:
+            birth_date = datetime.strptime(message.text, "%Y.%m.%d")
+        except ValueError:
+            await message.answer("Sana noto‘g‘ri formatda! YYYY.MM.DD formatda kiriting:")
+            return
+
+        today = datetime.today()
+        age = today.year - birth_date.year
+        if (today.month, today.day) < (birth_date.month, birth_date.day):
+            age -= 1
+
+        if age > 18:
+            await state.clear()
+            await message.answer("Siz 18 yoshga to'lmagansiz!")
+            return
+
+        await state.update_data(birth_date=message.text)
+        await state.update_data(age=age)
+        await state.set_state(Form.image)
+        await message.answer("Rasmingizni yuboring:")
+
+
+@dp.message(Form.image)
+async def image_handler(message: Message, state: FSMContext):
+    if not message.photo:
+        await message.answer("Rasmingizni tashlang (rasm formatda kelsin)!")
+        return
+
+    file_id = message.photo[-1].file_id
+    await state.update_data(image=file_id)
+
+    data = await state.get_data()
+    await state.clear()
+
+    telegram_id = message.from_user.id
+
+    text = (
+        f"<b>First name:</b> {data['first_name']}\n"
+        f"<b>Birth date:</b> {data['birth_date']}\n"
+        f"<b>Yoshi:</b> {data['age']}\n"
+        f"<b>Telegram ID:</b> {telegram_id}"
+    )
+
+    await message.answer_photo(file_id, caption=text)
+
+async def main() -> None:
+    bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
+
+

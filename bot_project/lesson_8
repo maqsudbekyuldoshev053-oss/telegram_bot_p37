@@ -1,0 +1,101 @@
+import asyncio
+import logging
+import sys
+
+from datetime import datetime
+from pyexpat.errors import messages
+
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart, Command, state, callback_data
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import ReplyKeyboardRemove, Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+TOKEN = "Token"
+
+dp = Dispatcher(storage=MemoryStorage())
+
+ADMIN_ID = ID
+
+
+class Form(StatesGroup):
+    first_name = State()
+    age = State()
+    phone = State()
+
+
+@dp.message(Command('start'))
+async def common_start_handler(message: Message, bot: Bot, state: FSMContext):
+    await state.set_state(Form.first_name)
+    await message.reply("Botimizga xush kelibsiz! ")
+    await message.answer("Ismingizni kiriting: ")
+
+@dp.message(Form.first_name)
+async def common_start_handler(message: Message, bot: Bot, state: FSMContext):
+    await state.update_data(name=message.text)
+    await state.set_state(Form.age)
+    await message.answer("Yoshingizni  kiriting: ")
+
+@dp.message(Form.age)
+async def common_start_handler(message: Message, bot: Bot, state: FSMContext):
+    await state.update_data(age=message.text)
+    await state.set_state(Form.phone)
+    await message.answer("Telefon raqamingizni  kiriting: ")
+
+
+@dp.message(Form.phone)
+async def common_start_handler(message: Message, bot: Bot, state: FSMContext):
+    await state.update_data(phone=message.text)
+    data = await state.get_data()
+    text = ''
+    for k, v in data.items():
+        text += f'{k}: {v}\n'
+    ikn = InlineKeyboardBuilder()
+    ikn.add(
+        InlineKeyboardButton(text='Yes', style='success', callback_data='yes'),
+        InlineKeyboardButton(text='No', style='danger', callback_data='no'),
+    )
+    await message.answer(f"Malumotlarni tekshiring to'g'rimi? \n{text}", reply_markup=ikn.as_markup())
+
+
+@dp.callback_query()
+async def callback_call(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    data = await state.get_data()
+    if callback.data == "yes":
+        if not data:
+            await callback.answer("Ma'lumot topilmadi ❗", show_alert=True)
+            return
+        text = ""
+        for k, v in data.items():
+            text += f"{k}: {v}\n"
+
+        await bot.send_message(ADMIN_ID, text)
+        await callback.message.answer("Ma'lumot yuborildi ✅")
+
+        await state.clear()
+
+    elif callback.data == "no":
+        await callback.message.answer("Qaytadan kiriting: /start")
+        await callback.message.delete()
+
+
+
+
+
+async def main() -> None:
+    # Initialize Bot instance with default bot properties which will be passed to all API calls
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    # And the run events dispatching
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
+
+

@@ -1,0 +1,95 @@
+--------------------------------------------
+1-kutubxonalar
+
+import asyncio
+from os import getenv
+from aiogram import Bot, Dispatcher
+from aiogram.filters import Command
+from aiogram.types import Message, FSInputFile
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+2-botfather dan olingan bot tokeni
+
+TOKEN = "Token"
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+
+dp = Dispatcher()
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+3-botga start bosilganda bot  URL dagi narsani userga tashlab beradi:
+(bu yerdagi kodda (send_document -> document) tashlab beradi
+(send_photo -> surat) tashlab beradi
+
+Command handler
+@dp.message(Command("start"))
+async def command_start_handler(message: Message, bot: Bot) -> None:
+    await bot.send_document(message.from_user.id, "https://daryo.uz/image/960x540?url=https%3A%2F%2Fdata.daryo.uz%2Fmedia%2F2026%2F02%2F17%2F1771317135608463862_960X540%20UZ.jpg")
+    await bot.send_photo(message.from_user.id,"https://daryo.uz/image/960x540?url=https%3A%2F%2Fdata.daryo.uz%2Fmedia%2F2026%2F02%2F17%2F1771317135608463862_960X540%20UZ.jpg")
+    await message.answer("Hello!")----bu esa hello yozuvini chiqaradi
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+4- bu codda user yani bot foydalanuvchisi botga document yuborsa bot uni adminga serverga saqlaydi
+
+@dp.message()
+async def message_handler(message: Message, bot: Bot) -> None:
+    file_id = message.document.file_id
+    file = await bot.get_file(file_id)
+    await bot.download(file, message.document.file_name)
+    await message.answer("Adminga yuborildi!")
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+5- bu codlar  botdan userga yuboradiganlar
+ # await message.answer_audio(URLInputFile(''))                                ---------bu berilgan url dagi  audioni foydalanuvchiga yuboradi
+ # await message.answer_location(45.3948849848, 46.7575899479)                 ---------bu berilgan lokatsiyani yuboradi
+ # audio = FSInputFile("/home/maqsudbek/Downloads/Telegram Desktop/music.mp3") ---------bu berilgan audioni yuboradi
+
+
+@dp.message()
+async def message_handler(message: Message, bot: Bot) -> None:
+    # await message.answer_audio(URLInputFile('https://uzhits.net/uploads/files/2026-02/ziyoda-kora-olmaysiz_(uzhits.net).mp3', filename='zor qoshiq.mp3'))
+
+    # await message.answer_location(45.3948849848, 46.7575899479)
+    # audio = FSInputFile("/home/maqsudbek/Downloads/Telegram Desktop/music.mp3")
+    # await message.answer_audio(audio)
+
+    # await message.answer_media_group()
+    # await message.answer_paid_media()
+    # await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+6- bu poll yani surov ovoz yig'ish
+
+@dp.message()
+async def message_handler(message: Message, bot: Bot) -> None:
+ # options =[
+    #     InputPollOption(text='ha'),
+    #     InputPollOption(text='yuq'),
+    # ]
+    # await message.answer_poll("dars buladimi?", options, protect_content=True)
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+7- bu botni run qilishda kerakli cod
+
+# Run the bot
+async def main() -> None:
+    bot = Bot(token=TOKEN)
+    await dp.start_polling(bot)
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+8- bu ishga tushiradigan cod
+
+if __name__ == "__main__":
+    asyncio.run(main())
+------------------------------------------------------------------------------------------

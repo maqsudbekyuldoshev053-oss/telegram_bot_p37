@@ -1,0 +1,113 @@
+import asyncio
+import logging
+import sys
+
+from datetime import datetime
+from pyexpat.errors import messages
+
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart, Command, state, callback_data
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import ReplyKeyboardRemove, Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, \
+    BotCommand, BotCommandScopeAllPrivateChats, KeyboardButton, BufferedInputFile, InputProfilePhotoStatic
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder, KeyboardButton
+from sqlalchemy.util import await_only
+
+TOKEN = "Token"
+
+redis_url = 'redis://localhost:6379/0'
+dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
+
+ADMIN_ID = ID
+
+
+class Form(StatesGroup):
+    first_name = State()
+    birth_date = State()
+    image = State()
+
+
+async def startup(bot: Bot) -> None:
+    await bot.set_my_commands([
+        BotCommand(command='start', description="Bot started"),
+    ], scope=BotCommandScopeAllPrivateChats())
+
+
+@dp.message(CommandStart())
+async def start_handler(message: Message, bot: Bot, state: FSMContext) -> None:
+    await state.set_state(Form.first_name)
+    await message.answer("Bot ga xush kelibsiz!")
+    await message.answer('Ism kiriting')
+
+
+@dp.message(Form.first_name)
+async def handle_first_name(message: Message, bot: Bot, state: FSMContext) -> None:
+    first_name = message.text
+    if first_name.replace("'", '').isalpha():
+        await state.update_data(first_name=first_name.title())
+        await state.set_state(Form.birth_date)
+        await message.answer("Tug'ilgan kun kiriting")
+    else:
+        await message.answer("Ism to'g'ri kiriting")
+
+
+@dp.message(Form.birth_date)
+async def handle_first_receive(message: Message, state: FSMContext):
+    birth_date = message.text
+    try:
+        birth_date = datetime.strptime(birth_date, '%Y.%m.%d')
+    except Exception as e:
+        await message.answer('tugilgan sanani togri kiriting')
+        return
+
+    age = datetime.now().year - birth_date.year
+    if age <= 18:
+        await message.answer('yoshingiz kichkina!')
+        return
+
+    await state.update_data(birth_date=message.text, age=age)
+    await state.set_state(Form.image)
+    await message.answer("Rasm kiriting")
+
+@dp.message(Form.image)
+async def handler_image(message: Message, bot: Bot, state: FSMContext) -> None:
+    photo = message.photo
+    if photo is None:
+        await message.answer("Rasm xato ❌(Rasm formatda kiriting)")
+        return
+
+    await state.update_data(photo=photo[-1].file_id)
+    data = await state.get_data()
+    text = (
+        f"<b>Ism</b>: {data['first_name']}\n"
+        f"<b>Tugilgan kun</b>: {data['birth_date']}\n"
+        f"<b>Yoshi</b>: {data['age']}\n"
+        f"<b>Telegram ID</b>: {message.from_user.id}"
+    )
+    ikm = InlineKeyboardBuilder()
+    ikm.add(
+        InlineKeyboardButton(text='Ism ✏️', callback_data='ism'),
+        InlineKeyboardButton(text="Tug'ilgan kun ✏️", callback_data='birth'),
+        InlineKeyboardButton(text='Rasm ✏️', callback_data='image')
+    )
+    ikm.adjust(1)
+    await message.answer_photo(data['photo'], caption=text,  reply_markup=ikm.as_markup())
+
+
+
+async def main() -> None:
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    dp.startup.register(startup)
+
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())

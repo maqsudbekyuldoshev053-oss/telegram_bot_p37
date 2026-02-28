@@ -1,0 +1,146 @@
+import asyncio
+import logging
+import sys
+
+import aiohttp
+import aiofiles
+import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.filters import CommandStart
+
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
+import tempfile, os, aiohttp
+
+TOKEN = "Token
+redis_url = 'redis://localhost:6379/0'
+
+dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
+ADMIN_ID = Id
+
+MODULES = {
+    "1-module": {
+        "1-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_1.py",
+        "2-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_2.py",
+        "3-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_3.py",
+        "4-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_4.py",
+        "5-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_5.py",
+        "6-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_6.py",
+        "7-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_7.py",
+        "8-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_8.py",
+        "9-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_9.py",
+        "10-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_10.py",
+        "11-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/lesson_11.py",
+        "project": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_1/master/project.py",
+    },
+
+    "2-module": {
+        "1-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_1.py",
+        "2-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_2.py",
+        "3-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_3.py",
+        "4-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_4.py",
+        "5-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_5.py",
+        "6-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_6.py",
+        "7-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_7.py",
+        "8-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_8.py",
+        "9-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_9.py",
+        "10-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_10.py",
+        "11-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/lesson_11.py",
+        "amaliy_loyiha_kutubxona2": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/amaliy_loyiha_kutubxona2.py",
+        "amaliy_loyiha_kutubxona": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/amaliy_loyiha_kutubxona.py",
+        "amaliy_loyiha_market2_filebilan": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/amaliy_loyiha_market2_filebilan.py",
+        "amaliy_loyiha_online_market": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_2/master/amaliy_loyiha_online_market.py"
+    },
+
+    "3-module": {
+        "1-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_1.py",
+        "2-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_2.py",
+        "3-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_3.py",
+        "4-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_4.py",
+        "5-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_5.py",
+        "6-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_6.py",
+        "7-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_7.py",
+        "8-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_8.py",
+        "9-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_9.py",
+        "10-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_10.py",
+        "11-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_3/master/lesson_11.py"
+    },
+
+    "4-module": {
+        "Eslatma uchun": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/TODO",
+        "1-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_1.sql",
+        "2-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_2.sql",
+        "3-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_3.sql",
+        "4-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_4.sql",
+        "5-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_5.sql",
+        "6-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_6.sql",
+        "7-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_7.sql",
+        "8-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_8.sql",
+        "9-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_9.sql",
+        "10-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_10.sql",
+        "11-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_11.sql",
+    },
+}
+
+
+@dp.message(CommandStart())
+async def start_handler(message: types.Message):
+    await message.answer('Xush kelibsiz')
+
+    kb_buttons = [[KeyboardButton(text=module)] for module in MODULES.keys()]
+    kb = ReplyKeyboardMarkup(keyboard=kb_buttons, resize_keyboard=True)
+    await message.answer("Modullardan birini tanlang:", reply_markup=kb)
+
+
+@dp.message()
+async def handle_message(message: types.Message):
+    text = message.text
+    if text in MODULES:
+        kb_buttons = [[KeyboardButton(text=dars)] for dars in MODULES[text].keys()]
+        kb_buttons.append([KeyboardButton(text="⬅️ Orqaga")])
+        kb = ReplyKeyboardMarkup(keyboard=kb_buttons, resize_keyboard=True)
+        await message.answer(f"{text} darslari:", reply_markup=kb)
+        return
+
+    for module, darslar in MODULES.items():
+        if text in darslar:
+            url = darslar[text]
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    if resp.status != 200:
+                        await message.answer("Faylni yuklab bo'lmadi")
+                        return
+                    file_data = await resp.read()
+                    file_name = url.split("/")[-1]
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix=f"{file_name}") as tmp_file:
+                    tmp_file.write(file_data)
+                    tmp_path = tmp_file.name
+
+                document = FSInputFile(path=tmp_path, filename=file_name)
+                await message.answer_document(document=document)
+
+                os.remove(tmp_path)
+                return
+
+    if text == "⬅️ Orqaga":
+        kb_buttons = [[KeyboardButton(text=module)] for module in MODULES.keys()]
+        kb = ReplyKeyboardMarkup(keyboard=kb_buttons, resize_keyboard=True)
+        await message.answer("Modullardan birini tanlang:", reply_markup=kb)
+
+
+async def main():
+    bot = Bot(
+        token=TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    )
+
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())

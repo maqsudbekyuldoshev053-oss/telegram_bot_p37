@@ -1,0 +1,127 @@
+-------------------------------------------------------------------------
+1-kutubxonalar
+
+import asyncio
+import logging
+import sys
+from os import getenv
+from pyexpat.errors import messages
+from aiogram import Bot, Dispatcher, html
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import CommandStart
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import Message, FSInputFile, ContentType, InputPollOption, URLInputFile, ReplyKeyboardMarkup, \
+    KeyboardButton, InlineKeyboardButton, CallbackQuery,InlineKeyboardMarkup
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+2-botning Tokeni
+
+TOKEN = Token
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+3- adminning id isi
+
+ADMIN_ID = 7742819222
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+dp = Dispatcher()
+
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+4- handle lar  yani user document, photo, audio yuborsa shunga qarab
+nima kelganligini  aytib javob qaytaradi
+
+
+@dp.message(lambda msg: msg.content_type == ContentType.PHOTO)----- photo uchun
+async def photo_handler (message: Message) -> None:
+    await message.answer('rasm keldi')
+
+@dp.message(lambda msg: msg.content_type == ContentType.DOCUMENT)----- document uchun
+async def document_handler(message: Message) -> None:
+    await message.answer('document keldi')
+
+
+@dp.message(lambda msg: msg.content_type == ContentType.AUDIO)----- audio uchun
+async def audio_handler(message: Message):
+    await message.answer("audio keldi")
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+5- bu botni run qilishda kerakli cod
+
+async def main() -> None:
+    # Initialize Bot instance with default bot properties which will be passed to all API calls
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    # And the run events dispatching
+    await dp.start_polling(bot)
+
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+6- bu ishga tushiradigan cod
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

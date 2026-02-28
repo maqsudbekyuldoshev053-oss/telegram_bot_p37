@@ -1,0 +1,107 @@
+import asyncio
+import logging
+import sys
+from datetime import datetime
+
+import csv
+import json
+from gc import callbacks
+from pyexpat.errors import messages
+
+from aiogram import Bot, Dispatcher, F
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart, Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import Message, InlineKeyboardButton, BotCommand, BotCommandScopeAllPrivateChats, CallbackQuery, \
+    InputMediaPhoto
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from alembic.command import show
+from sqlalchemy.util import await_only
+
+TOKEN = "Token"
+redis_url = 'redis://localhost:6379/0'
+
+dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
+ADMIN_ID = Id
+
+
+@dp.message(CommandStart())
+async def command_start(message: Message) -> None:
+    await message.answer(
+        "Xush kelibsiz!")
+
+    ikm = InlineKeyboardBuilder()
+    with open("regions.json", encoding="utf-8") as f:
+        regions = json.load(f)
+    for region in regions:
+        ikm.button(
+            text=region["name"],
+            callback_data=f"region:{region['id']}"
+        )
+        ikm.adjust(1)
+    await message.answer("Viloyatni tanlang:", reply_markup=ikm.as_markup())
+
+
+@dp.callback_query(F.data.startswith("region:"))
+async def region_handler(callback: CallbackQuery) -> None:
+    region_id = callback.data.removeprefix("region:")
+    ikm = InlineKeyboardBuilder()
+
+    with open("districts.json", encoding="utf-8") as f:
+        districts = json.load(f)
+        for district in districts:
+            if district["region_id"] == region_id:
+                ikm.button(
+                    text=district["name"], callback_data=f"district:{district['name']}"
+                )
+        print(district['region_id'], region_id)
+    ikm.adjust(1)
+    await callback.message.edit_reply_markup(callback.inline_message_id, reply_markup=ikm.as_markup())
+
+    ikm.button(text="⬅️ Orqaga", callback_data="back_to_regions")
+
+    ikm.adjust(1)
+
+    await callback.message.edit_text(
+        "Tumanni tanlang:",
+        reply_markup=ikm.as_markup()
+    )
+
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "back_to_regions")
+async def back_to_regions_handler(callback: CallbackQuery) -> None:
+
+    ikm = InlineKeyboardBuilder()
+    with open("regions.json", encoding="utf-8") as f:
+        regions = json.load(f)
+    for region in regions:
+        ikm.button(
+            text=region["name"],
+            callback_data=f"region:{region['id']}"
+        )
+        ikm.adjust(1)
+    await callback.message.edit_text("Viloyatni tanlang:", reply_markup=ikm.as_markup())
+
+    await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("district:"))
+async def district_handler(callback: CallbackQuery) -> None:
+    msg = callback.data.removeprefix("district:")
+    await callback.answer(msg + " Tanlandi", show_alert=True)
+
+
+async def main():
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    # dp.startup.register(startup)
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
