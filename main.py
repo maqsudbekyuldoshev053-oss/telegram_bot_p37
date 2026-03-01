@@ -1,116 +1,121 @@
 import asyncio
+import csv
 import logging
 import sys
-from datetime import datetime
-
-import csv
-import json
-from gc import callbacks
-from pyexpat.errors import messages
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.types import Message, InlineKeyboardButton, BotCommand, BotCommandScopeAllPrivateChats, CallbackQuery, \
-    InputMediaPhoto, InputMediaVideo, FSInputFile
+from aiogram.types import Message, InlineKeyboardButton, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import engine
-from models import District, Region
-from sqlalchemy import text
+from config import settings
+from models import Region, District
 
+dp = Dispatcher()
 
-TOKEN = "7874681745:AAFb_km4wx4lHNfD-MAYK9OmabOhLdB0ORs"
-redis_url = 'redis://localhost:6379/0'
-
-dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
 ADMIN_ID = 7742819222
+
+class Form(StatesGroup):
+    name = State()
+
+
+def regions_inline_btn():
+    regions = Region.get_all()
+    ikm = InlineKeyboardBuilder()
+    for region in regions:
+        ikm.add(
+            InlineKeyboardButton(text=region.name, callback_data=f"region:{region.id}")
+        )
+    ikm.adjust(1)
+    return ikm
+
+def district_inline_btns(region_id):
+    districts = District.filter(region_id=region_id)
+    ikm = InlineKeyboardBuilder()
+    districts = District.filter(region_id=region_id)
+    ikm = InlineKeyboardBuilder()
+    for district in districts:
+        ikm.row(
+            InlineKeyboardButton(text=district.name, callback_data=f'district:{district.id}'),
+            InlineKeyboardButton(text='✏️', callback_data=f'change_district:{district.id}'),
+            InlineKeyboardButton(text='❌', callback_data=f'remove_district:{district.id}')
+        )
+    ikm.row(
+        InlineKeyboardButton(text='⬅️ Back', callback_data='back:region'),
+    )
+    return ikm
 
 
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
     await message.reply("Xush kelibsiz")
-
-
-    regions = Region.get_all()
-    ikm = InlineKeyboardBuilder()
-    for region in regions:
-        ikm.add(
-            InlineKeyboardButton(text=region.name,
-            callback_data=f"region:{region.id}")
-            )
-    ikm.adjust(1)
-    await message.reply("Viloyatni tanlang:", reply_markup=ikm.as_markup())
+    ikm = regions_inline_btn()
+    await message.answer("Viloyatlar:", reply_markup=ikm.as_markup())
 
 
 @dp.callback_query(F.data.startswith("region:"))
 async def region_handler(callback: CallbackQuery) -> None:
     region_id = callback.data.removeprefix("region:")
-
-    districts = District.get_all()
-    ikm = InlineKeyboardBuilder()
-
-    for district in districts:
-        ikm.button(
-            text=district.name, callback_data=f"district:{district.id}"
-        )
-    ikm.adjust(1)
+    ikm = district_inline_btns(region_id)
+    await callback.message.edit_text("Tumanni tanlang:")
     await callback.message.edit_reply_markup(callback.inline_message_id, reply_markup=ikm.as_markup())
 
-    ikm.button(text="🔙 Back", callback_data='back')
-    ikm.adjust(1)
-    await callback.message.edit_text("Tumanni tanlang:",reply_markup=ikm.as_markup())
 
 
-@dp.callback_query(F.data == "back")
-async def back_handler(callback: CallbackQuery) -> None:
-
-    regions = Region.get_all()
-    ikm = InlineKeyboardBuilder()
-    for region in regions:
-        ikm.add(
-            InlineKeyboardButton(text=region.name,
-                                 callback_data=f"region:{region.id}")
-        )
-    ikm.adjust(1)
-    await callback.message.edit_text("Viloyatni tanlang:", reply_markup=ikm.as_markup())
-
-    await callback.answer()
+@dp.callback_query(F.data.startswith("remove_district:"))
+async def district_btn_delete_handler(callback: CallbackQuery):
+    district_id = callback.data.removeprefix("remove_district:")
+    district = District.delete(district_id)
+    await callback.answer(f"{district.name} o'chirildi", show_alert=True)
+    ikm = district_inline_btns(district.region_id)
+    await callback.message.edit_reply_markup(callback.inline_message_id,  reply_markup=ikm.as_markup())
 
 
-@dp.callback_query(F.data.startswith("district:"))
-async def district_handler(callback: CallbackQuery) -> None:
-    msg = callback.data.removeprefix("district:")
-    await callback.answer(msg + " Tanlandi", show_alert=True)
+@dp.callback_query(F.data.startswith('change_district:'))
+async def callback_handler(callback: CallbackQuery, state: FSMContext) -> None:
+    district_id = callback.data.removeprefix('change_district:')
+    await state.update_data(district_id=district_id)
+    await state.set_state(Form.name)
+    await callback.message.answer('Yangi nomini kiriting')
 
+
+@dp.message(Form.name)
+async def callback_handler(message: Message, state: FSMContext) -> None:
+    new_district_name = message.text
+    data = await state.get_data()
+    district_id = data['district_id']
+    District.update(district_id, name=new_district_name)
+    await state.clear()
+    await message.answer('Nomi ozgartirildi!')
+
+
+@dp.callback_query(F.data.startswith('back:'))
+async def callback_handler(callback: CallbackQuery) -> None:
+    key = callback.data.removeprefix('back:')
+    if key == 'region':
+        ikm = regions_inline_btn()
+        await callback.message.edit_text('Viloyatlar')
+        await callback.message.edit_reply_markup(callback.inline_message_id, reply_markup=ikm.as_markup())
 
 
 @dp.message(Command("migrate"))
-async def migrate(message: Message):
+async def migrate_handler(message: Message):
+    await message.answer("Ma’lumotlar bazaga yozildi!✅")
 
-    with open("regions.csv", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            Region.create(name=row["name"])
-
-    with open("districts.csv", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            District.create(
-                id=int(row["id"]),name=row["name"], region_id=int(row["region_id"]))
-
-
-    await message.answer("Region va District ma’lumotlari databasega yozildi!✅")
-
-
+    with open("regions.csv", encoding="utf-8-sig") as f1, open("districts.csv", encoding="utf-8-sig") as f2:
+        regions = csv.DictReader(f1)
+        districts = csv.DictReader(f2)
+        Region.bulk_create(list(regions))
+        District.bulk_create(list(districts))
 
 async def main():
-    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = Bot(settings.TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     # dp.startup.register(startup)
     await dp.start_polling(bot)
 
@@ -118,4 +123,3 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
-
