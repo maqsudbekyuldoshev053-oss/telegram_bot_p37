@@ -1,0 +1,84 @@
+@dp.message(Command("add_vacancy"))
+async def add_vacancy_handled(message: Message, state: FSMContext):
+    categorys = Category.get_all()
+
+    if not categorys:
+        await message.answer("Hozircha kategoriyalar mavjud emas. Avval /add_category orqali qo'shing.")
+        return
+
+    ikm = InlineKeyboardBuilder()
+    for category in categorys:
+        ikm.add(
+            InlineKeyboardButton(
+                text=category.name,
+                callback_data=f"category:{category.id}"
+            )
+        )
+
+    ikm.adjust(1)
+
+    await state.set_state(Form.select_category)
+
+    await message.answer(
+        "Kategoriya tanlang:",
+        reply_markup=ikm.as_markup()
+    )
+
+
+
+@dp.callback_query(Form.select_category)
+async def category_selected(callback, state: FSMContext):
+    category_id = callback.data.split(":")[1]
+
+    await state.update_data(category_id=category_id)
+    await state.set_state(Form.vacancy_title)
+
+    await callback.message.answer("Ish nomini kiriting:")
+    await callback.answer()
+
+
+
+    @dp.message(Form.vacancy_title)
+async def vacancy_title_handler(message: Message, state: FSMContext):
+    title = (message.text or "").strip()
+
+    if not title:
+        await message.answer("Ish nomi bo'sh bo'lmasligi kerak.")
+        return
+
+    await state.update_data(title=title)
+    await state.set_state(Form.vacancy_salary)
+
+    await message.answer("Oylikni kiriting (kamida 500000 so'm):")
+
+
+@dp.message(Form.vacancy_salary)
+async def vacancy_salary_handler(message: Message, state: FSMContext):
+    try:
+        salary = int(message.text.replace(" ", ""))
+    except:
+        await message.answer("Iltimos faqat raqam kiriting.")
+        return
+
+    if salary < 500000:
+        await message.answer("Oylik kamida 500 000 so'm bo'lishi kerak.")
+        return
+
+    data = await state.get_data()
+
+    category_id = data.get("category_id")
+    title = data.get("title")
+
+    # Masalan:
+    # Vacancy.create(title=title, salary=salary, category_id=category_id)
+
+    await message.answer(
+        f"✅ Vakansiya qo'shildi:\n\n"
+        f"Kategoriya ID: {category_id}\n"
+        f"Ish nomi: {title}\n"
+        f"Oylik: {salary} so'm"
+    )
+
+    await state.clear()
+
+
