@@ -14,7 +14,7 @@ from aiogram.types import Message, InlineKeyboardButton, BotCommand, BotCommandS
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 TOKEN = "Token"
-redis_url = 'redis://localhost:6379/0'
+redis_url = 'redis://host:port/parol'
 
 dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
 ADMIN_ID = ID

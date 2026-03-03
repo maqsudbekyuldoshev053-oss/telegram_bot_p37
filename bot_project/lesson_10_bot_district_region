@@ -18,7 +18,7 @@ from models import Region, District
 
 dp = Dispatcher()
 
-ADMIN_ID = 7742819222
+ADMIN_ID = id
 
 class Form(StatesGroup):
     name = State()

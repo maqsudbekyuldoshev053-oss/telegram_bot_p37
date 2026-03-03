@@ -3,7 +3,7 @@ import logging
 import sys
 
 from datetime import datetime
-from pyexpat.errors import messages
+
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -20,7 +20,7 @@ from sqlalchemy.util import await_only
 
 TOKEN = "Token"
 
-redis_url = 'redis://localhost:6379/0'
+redis_url = 'redis://host:port/parol'
 dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
 
 ADMIN_ID = ID

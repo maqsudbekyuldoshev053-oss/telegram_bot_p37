@@ -1,8 +1,9 @@
-7874681745:AAFb_km4wx4lHNfD-MAYK9OmabOhLdB0ORs
-
-
-
 https://api.telegram.org/bot7874681745:AAFb_km4wx4lHNfD-MAYK9OmabOhLdB0ORs/getMe
+
+
+TELEGRAM_BOT_TOKEN="7874681745:AAFb_km4wx4lHNfD-MAYK9OmabOhLdB0ORs"
+ADMIN_ID =  7742819222
+
 
 "chat_id":7874681745
 "text":xabar

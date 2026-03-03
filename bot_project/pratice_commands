@@ -1,0 +1,21 @@
+
+from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats, BotCommandScopeChat
+
+async def set_commands(bot):
+    user_commands = [
+        BotCommand(command="start", description="👋 Start bot"),
+        BotCommand(command="help", description="❓ For help"),
+        BotCommand(command="cancel", description="❌Present process back"),
+    ]
+    await bot.set_my_commands(user_commands, scope=BotCommandScopeAllPrivateChats())
+
+    admin_commands = [
+        BotCommand(command="start", description="👋 Botni ishga tushiradi"),
+        BotCommand(command="help", description="❓ Yordam so‘rovini yuborish uchun"),
+        BotCommand(command="cancel", description="❌ Hozirgi jarayonni bekor qiladi"),
+        BotCommand(command="broadcast", description="📢 Foydalanuvchilarga xabar yuboradi"),
+        BotCommand(command="lessons_count", description="📊 Yuklangan darslar statistikasi"),
+        BotCommand(command="stats", description="👥 Foydalanuvchilar sonini ko‘rsatadi"),
+        BotCommand(command="admin", description="🛠 Admin panelini ko‘rsatadi"),
+    ]
+    await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=ADMIN_ID))

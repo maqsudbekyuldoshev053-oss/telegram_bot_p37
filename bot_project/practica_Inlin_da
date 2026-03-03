@@ -11,22 +11,24 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.types import Message, BotCommand, BotCommandScopeAllPrivateChats, BotCommandScopeChat
+from aiogram.types import Message, BotCommand, BotCommandScopeAllPrivateChats, InlineKeyboardMarkup, \
+    InlineKeyboardButton
 from aiogram.filters import CommandStart, Command
 from config import settings
 
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 import tempfile, os, aiohttp
 
-
 redis_url = 'redis://localhost:6379/0'
 
 dp = Dispatcher(storage=RedisStorage.from_url(redis_url))
 
-ADMIN_ID =  7742819222
+ADMIN_ID = 7742819222
+
 
 class HelpState(StatesGroup):
     waiting_for_message = State()
+
 
 MODULES = {
     "1-module": {
@@ -90,7 +92,7 @@ MODULES = {
         "10-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_10.sql",
         "11-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_4/master/lesson_11.sql",
     },
-    "5-module":{
+    "5-module": {
         "1-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_5/master/lesson_1.py",
         "2-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_5/master/lesson_2.py",
         "3-dars": "https://raw.githubusercontent.com/maqsudbekyuldoshev053-oss/module_5/master/lesson_3.py",
@@ -99,39 +101,110 @@ MODULES = {
 }
 
 
-from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats, BotCommandScopeChat
-
-async def set_commands(bot):
-    user_commands = [
-        BotCommand(command="start", description="👋 Botni ishga tushiradi"),
-        BotCommand(command="help", description="❓ Yordam so‘rovini yuborish uchun"),
-        BotCommand(command="cancel", description="❌ Hozirgi jarayonni bekor qiladi"),
-    ]
-    await bot.set_my_commands(user_commands, scope=BotCommandScopeAllPrivateChats())
-
-    admin_commands = [
-        BotCommand(command="start", description="👋 Botni ishga tushiradi"),
-        BotCommand(command="help", description="❓ Yordam so‘rovini yuborish uchun"),
-        BotCommand(command="cancel", description="❌ Hozirgi jarayonni bekor qiladi"),
-        BotCommand(command="broadcast", description="📢 Foydalanuvchilarga xabar yuboradi"),
-        BotCommand(command="lessons_count", description="📊 Yuklangan darslar statistikasi"),
-        BotCommand(command="stats", description="👥 Foydalanuvchilar sonini ko‘rsatadi"),
-        BotCommand(command="admin", description="🛠 Admin panelini ko‘rsatadi"),
-    ]
-    await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=ADMIN_ID))
-
-
-
 @dp.message(CommandStart())
-async def start_handler(message: Message, bot:Bot):
+async def start_handler(message: Message, bot: Bot):
     await message.answer('Xush kelibsiz')
-
-
     await dp.storage.redis.sadd("users", message.from_user.id)
+    buttons = []
 
-    kb_buttons = [[KeyboardButton(text=module)] for module in MODULES.keys()]
-    kb = ReplyKeyboardMarkup(keyboard=kb_buttons, resize_keyboard=True)
-    await message.answer("Modullardan birini tanlang:", reply_markup=kb)
+    for module in MODULES.keys():
+        buttons.append(
+            [
+                InlineKeyboardButton(text=module, callback_data=f"module:{module}")
+            ]
+        )
+    ikm = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await message.answer("Modullardan birini tanlang:", reply_markup=ikm)
+
+
+@dp.callback_query(lambda c: c.data.startswith("module:"))
+async def module_handler(callback: types.CallbackQuery):
+    module_name = callback.data.split(":")[1]
+
+    dars_buttons = []
+    for dars_name in MODULES[module_name].keys():
+        dars_buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=dars_name,
+                    callback_data=f"dars:{module_name}:{dars_name}"
+                )
+            ]
+        )
+    dars_buttons.append(
+        [
+            InlineKeyboardButton(
+                text="⬅️ Orqaga",
+                callback_data="back_to_modules"
+            )
+        ]
+    )
+
+    ikm = InlineKeyboardMarkup(inline_keyboard=dars_buttons)
+
+    await callback.message.edit_text(
+        f"{module_name} darslari:",
+        reply_markup=ikm
+    )
+
+
+@dp.callback_query(lambda c: c.data.startswith("dars:"))
+async def lesson_handler(callback: types.CallbackQuery):
+    _, module_name, dars_name = callback.data.split(":")
+    url = MODULES[module_name][dars_name]
+
+    await dp.storage.redis.incr(f"lesson:{module_name}:{dars_name}")
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                await callback.message.answer("Faylni yuklab bo'lmadi")
+                return
+            file_data = await resp.read()
+            file_name = url.split("/")[-1]
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_name) as tmp_file:
+        tmp_file.write(file_data)
+        tmp_path = tmp_file.name
+
+    document = FSInputFile(path=tmp_path, filename=file_name)
+    await callback.message.answer_document(document=document)
+
+    os.remove(tmp_path)
+
+    back_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Orqaga",
+                    callback_data=f"module:{module_name}"
+                )
+            ]
+        ]
+    )
+    await callback.message.answer("Darslar:", reply_markup=back_keyboard)
+
+@dp.callback_query(lambda c: c.data == "back_to_modules")
+async def back_to_modules_handler(callback: types.CallbackQuery):
+    buttons = []
+
+    for module in MODULES.keys():
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=module,
+                    callback_data=f"module:{module}"
+                )
+            ]
+        )
+
+    ikm = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await callback.message.edit_text(
+        "Modullardan birini tanlang:",
+        reply_markup=ikm
+    )
 
 
 @dp.message(Command("help"))
@@ -140,6 +213,7 @@ async def help_handler(message: Message, state: FSMContext):
     await state.set_state(HelpState.waiting_for_message)
     await message.answer("Sizga qanday yordam bera olamiz?\n"
                          "Agar xohlamasangiz, /cancel deb bekor qilishingiz mumkin.")
+
 
 @dp.message(HelpState.waiting_for_message)
 async def helps_handler(message: Message, state: FSMContext):
@@ -161,6 +235,7 @@ async def helps_handler(message: Message, state: FSMContext):
     )
 
     await state.clear()
+
 
 @dp.message(Command('cancel'))
 async def cancel_handler(message: Message, state: FSMContext):
@@ -197,7 +272,7 @@ async def done_handler(message: Message):
 
         await message.bot.send_message(
             chat_id=user_id,
-            text="✅ Sizning so'rovingiz admin tomonidan hal qilindi!"
+            text="✅ Sizning so'rovingiz admin tomonidan ko'rib chiqildi va hal qilindi!"
         )
 
         await message.answer(f"✅ User {user_id} ga xabar muvaffaqiyatli yuborildi.")
@@ -234,69 +309,17 @@ async def stats_handler(message: Message):
     await message.answer(f"👥 Foydalanuvchilar soni: {users_count}")
 
 
-@dp.message()
-async def handle_message(message: Message):
-    text = message.text
-
-    if text in MODULES:
-        buttons = [[KeyboardButton(text=dars)] for dars in MODULES[text].keys()]
-        buttons.append([KeyboardButton(text="⬅️ Orqaga")])
-        kb = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-        await message.answer(f"{text} darslari:", reply_markup=kb)
-        return
-
-    for module_name, darslar in MODULES.items():
-        if text in darslar:
-
-            await dp.storage.redis.incr(f"lesson:{module_name}:{text}")
-
-            url = darslar[text]
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    if resp.status != 200:
-                        await message.answer("Faylni yuklab bo'lmadi")
-                        return
-                    file_data = await resp.read()
-                    file_name = url.split("/")[-1]
-
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_name) as tmp_file:
-                tmp_file.write(file_data)
-                tmp_path = tmp_file.name
-
-            await message.answer_document(
-                document=FSInputFile(tmp_path, filename=file_name)
-            )
-
-            os.remove(tmp_path)
-            return
-
-    if text == "⬅️ Orqaga":
-        buttons = [[KeyboardButton(text=module)] for module in MODULES.keys()]
-        kb = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-        await message.answer("Modullardan birini tanlang:", reply_markup=kb)
-        return
-
 @dp.message(Command("lessons_count"))
 async def lessons_count_handler(message: Message):
     if message.from_user.id != ADMIN_ID:
         await message.answer("❌ Sizda bu komandani ishlatish huquqi yo'q.")
         return
-
-    text_lines = []
-    total_downloads = 0
-
+    total_lessons = sum(len(darslar) for darslar in MODULES.values())
+    text_lines = [f"📚 Umumiy darsliklar soni: {total_lessons}\n"]
     for module_name, darslar in MODULES.items():
-        for dars_name in darslar.keys():
-            count = await dp.storage.redis.get(f"lesson:{module_name}:{dars_name}")
-            if count is None:
-                count = "hali hech kim yuklamadi!"
-            else:
-                count = int(count)
-                total_downloads += count
-                text_lines.append(f"• {module_name} - {dars_name}: {count} yuklash")
-
-        text = f"📊 Umumiy yuklangan darslar soni: {total_downloads}\n\n" + "\n".join(text_lines)
-        await message.answer(text)
+        text_lines.append(f"• {module_name}: {len(darslar)} dars")
+    text = "\n".join(text_lines)
+    await message.answer(text)
 
 
 
@@ -306,9 +329,7 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
-    await set_commands(bot)
     await dp.start_polling(bot)
-
 
 
 if __name__ == "__main__":
